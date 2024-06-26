@@ -1,5 +1,4 @@
 ﻿using Login.Data;
-using Login.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,12 +17,22 @@ namespace Login
             Configuration = configuration;
         }
 
+        //configure services and dependency injection
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
-            services.AddDbContext<AppDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddCors(options =>
+            {
+                options.AddPolicy("CorsPolicy",
+                    builder => builder.AllowAnyOrigin()
+                                      .AllowAnyMethod()
+                                      .AllowAnyHeader());
+            });
+            services.AddControllers();      //configures Dbcontext to use SQL Server
+            //services.AddDbContext<AppDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("TestDatabase"));
             services.AddScoped<UserDao>();
-            services.AddSingleton(new JwtService(Configuration["Jwt:Secret"], Configuration["Jwt:ExpDate"]));
+            //services.AddSingleton(new JwtService(Configuration["Jwt:Secret"], Configuration["Jwt:ExpDate"]));
+            services.AddSingleton<JwtService>();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
@@ -70,7 +79,7 @@ namespace Login
             });
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)     //configure the HTTP request pipeline
         {
             if (env.IsDevelopment())
             {
@@ -78,6 +87,7 @@ namespace Login
             }
 
             app.UseRouting();
+            app.UseCors("CorsPolicy");
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseSwagger();

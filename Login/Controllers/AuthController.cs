@@ -1,8 +1,8 @@
 ﻿using Login.Data;
 using Login.DTOs;
 using Login.Models;
-using Login.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Login.Controllers
 {
@@ -22,14 +22,20 @@ namespace Login.Controllers
         [HttpPost("signup")]
         public IActionResult Signup([FromBody] UserDto userDto)
         {
+            var existingUser = _userDao.GetUserByUsername(userDto.Username);
+            if (existingUser != null)
+            {
+                return BadRequest(new { message = "Username already exists" });
+            }
+
             var user = new User
             {
                 Username = userDto.Username,
                 Password = userDto.Password
             };
 
-            _userDao.AddUser(user);
-            return Ok(new { message = "User created successfully!" });
+            _userDao.AddUser(user);     //save new user to the database
+            return Ok(new { message = "User created successfully!" });  //success message if user is created successfully
         }
 
         [HttpPost("login")]
@@ -42,8 +48,8 @@ namespace Login.Controllers
                 return Unauthorized(new { message = "Invalid credentials" });
             }
 
-            var token = _jwtService.GenerateSecurityToken(user.Username);
-            return Ok(new { token });
+            var token = _jwtService.GenerateSecurityToken(user.Username);   //generate jwt token for the authenticated user
+            return Ok(new { token });   //return the jwt token
         }
     }
 }
